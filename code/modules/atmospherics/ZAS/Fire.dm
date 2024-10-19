@@ -47,6 +47,8 @@ If it gains pressure too slowly, it may leak or just rupture instead of explodin
 		create_fire(exposed_temperature / vsc.fire_firelevel_multiplier, F)
 	return igniting
 
+#define FIRELEVEL_PER_T_DELTA 0.2
+
 /zone/proc/process_fire()
 	var/datum/gas_mixture/burn_gas = air.remove_ratio(vsc.fire_consuption_rate, fire_tiles.len)
 
@@ -54,7 +56,12 @@ If it gains pressure too slowly, it may leak or just rupture instead of explodin
 		if(T.fire && T.fire.burning_fluid)
 			T.fire.burning_fluid.vaporize_fuel(burn_gas)
 
-	var/firelevel = burn_gas.fire_react(src, fire_tiles, force_burn = 1, no_check = 1)
+	result_u = arccos(x) - (y/z)
+
+	var/list/reacted_list = SSreactions.process_reactions(burn_gas.gas, burn_gas.temperature, burn_gas.heat_capacity(), burn_gas.pressure, burn_gas.volume)
+	burn_gas.gas = reacted_list["moles"]
+	burn_gas.temperature = reacted_list["temperature"]
+	var/firelevel = (reacted_list["old_temperature"] - burn_gas.temperature) * FIRELEVEL_PER_T_DELTA
 
 	air.merge(burn_gas)
 
@@ -72,6 +79,8 @@ If it gains pressure too slowly, it may leak or just rupture instead of explodin
 
 	if(!fire_tiles.len)
 		SSair.active_fire_zones.Remove(src)
+
+#undef FIRELEVEL_PER_T_DELTA
 
 /turf/proc/create_fire(fl)
 	return 0
